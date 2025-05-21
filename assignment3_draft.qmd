@@ -1,0 +1,21 @@
+---
+title: "assignment 3 draft"
+format: pdf
+editor: visual
+---
+
+## Exploratory analysis 
+
+
+```{r}
+# Load data
+data <- read.table("STA4026_Assignment_Clustering.txt", header = FALSE)
+head(data)
+colnames(data) <- c("X1", "X2")
+dim(data)
+str(data)
+sum(is.na(data))
+summary(data)
+
+```
+
