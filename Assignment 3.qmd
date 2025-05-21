@@ -1,0 +1,91 @@
+---
+title: "Assignment 3"
+subtitle: "Unsupervised Learning"
+date: last-modified
+date-format: "D MMMM YYYY"
+authors:
+  - name: Raphaela Azar
+  - name: Shvet Maharaj
+format: 
+  pdf:
+    pdf-engine: pdflatex
+    papersize: "a4paper"
+    include-in-header: 
+      text: |
+        \newcommand{\B}[1]{\boldsymbol{#1}}
+        \newcommand{\+}{\phantom{-}}
+        \newcommand{\op}[1]{\operatorname{#1}}
+execute:
+  echo: false
+  warning: false
+  freeze: auto
+---
+
+# Introduction
+
+BRIEF INTRODUCTON TO OUR PROJECT
+
+# Dataset
+
+We are utilising the `` dataset. Let us explore this dataset.
+
+```{r}
+#| label: libraries
+#| include: false
+library(tidyverse, attach.required = T)
+library(future)
+library(doFuture)
+library(progressr)
+library(parallelly)
+```
+
+```{r}
+#| label: parallel-computation-setup
+options(parallelly.availableCores.omit = 1)
+if(supportsMulticore()) # multicore = mac, linux, etc. (outside of RStudio)
+  plan(multicore) else plan(multisession) #multisession = windows and other
+on.exit(plan(sequential)) # to ensure that the workers are correctly shut down
+```
+
+```{r}
+#| label: theming
+maincolour <- "darkblue"
+# set ggplot defaults
+base_theme <- theme_minimal() + theme(aspect.ratio=1)
+theme_set(base_theme)
+```
+
+```{r}
+#| label: data-cleaning
+raw_dat <- read.table("STA4026_Assignment_Clustering.txt") |> as_tibble()
+
+raw_dat |> summarise(n = n(),
+                     distinct    = n_distinct(pick(V1,V2)),
+                     distinct_V1 = n_distinct(V1), 
+                     distinct_V2 = n_distinct(V2),
+                     any_na      = anyNA(pick(V1,V2), recursive = T))
+# Result: 
+# No duplicate points. 
+# Few points sharing one X or Y value
+# No NA values.
+# No need to remove values.
+dat <- raw_dat |> mutate(x = V1, y = V2, .keep='unused')
+# standardise???
+```
+
+The data has been cleaned through removing the entries in which any value is missing.
+Duplicate points have been removed.
+But! None were duplicates, and none were missing. So the data remains as is.
+
+Neither variable has been named, so for ease of discussion, the first variable will be referred to as $\B x$, and the second variable, $\B y$.
+
+```{r}
+#| label: fig-data-vis
+dat |> ggplot(aes(x=x,y=y)) + geom_point(alpha=0.3,size=0.5,colour=maincolour)
+```
+
+# Cross-Validation
+
+# Cluster Analysis
+
+# Conclusion
