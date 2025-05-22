@@ -11,6 +11,10 @@ editor: visual
 library(tidyr)
 library(ggplot2)
 library(ggExtra)
+library(moments) #skewness fns
+library(knitr)
+library(dplyr)
+library(corrplot)
 
 ```
 
@@ -47,13 +51,14 @@ The dataset contains 5000 observations with two numeric variables, `X1` and `X2`
 The variables exhibit wide ranges, with `X1` spanning approximately from 90,000 to 933,000 (median around 509,000) and `X2` from roughly 10,000 to 977,000 (median near 495,000). Boxplots reveal similar spreads in the data without any visible outliers. Based on this thorough assessment, no data cleaning was necessary. The dataset is complete, unique, and exhibits no extreme values that could bias clustering
 
 
-1b)
+1b)[remove this numbering]
 
 ```{r}
+scaled_data <- as.data.frame(scale(data))
 cor(data$X1, data$X2)
 ```
 
-The dataset contains two continuous numeric variables with similar scales and no missing data or significant outliers. The correlation between variables is weak (approximately 0.07), indicating they provide largely independent information. This justifies the use of Euclidean distance, which measures the straight-line distance between points in the two-dimensional space.
+The dataset contains two continuous numeric variables with similar scales and no missing data or significant outliers. The correlation between variables is weak (approximately 0.07) implies little linear relationship between the two variables. This independence suggests that the clusters formed based on one variable will not necessarily align with those formed based on the other variable justifiying the use of Euclidean distance, which measures the straight-line distance between points in the two-dimensional space.
 
 1c)
 
@@ -65,29 +70,92 @@ p1 <- ggplot(scale(data), aes(x = X1, y  =X2)) +
 ggMarginal(p1, type = "histogram",fill = "lightblue",bins = 30, color = "darkred")
 
 
+skew_X1 <- skewness(data$X1)
+skew_X2 <- skewness(data$X2)
+kurt_X1 <- kurtosis(data$X1)
+kurt_X2 <- kurtosis(data$X2)
 
+
+stats_table <- data.frame(
+  Variable = c("X1", "X2"),
+  Skewness = c(skew_X1, skew_X2),
+  Kurtosis = c(kurt_X1, kurt_X2),
+  mean = c(mean(data$X1), mean(data$X2)))
+
+kable(stats_table, digits = 3, caption = "Skewness and Kurtosis of Scaled Variables")
 
 ```
-We need to examine the univariate Distributions for skewness, spread, outliers, and modality since these :
-Continuous variables allow for nuanced grouping
-Multiple peaks in a distribution can indicate subgroups or clusters along that variable
-Wide spread means points are more dispersed, which might lead to well-separated clusters.
+We need to examine the univariate Distributions for skewness, spread, outliers, and modality since these effect...
+Both variables are continuous variables allow for nuanced grouping
 
+Evident from the histograms we can see multiple peaks in a distribution which indicates subgroups or clusters along that variable. We also notice that both variables have relatively wide spread means points that are more dispersed, which might lead to well-separated clusters.
+
+The skewness values for X1 and X2 are approximately -0.03 and 0.04, respectively. These values are very close to zero, indicating that both variables have nearly symmetric distributions without significant skewness.This is advantageous for centroid-based methods like k-means since cluster centers (means) will not be unduly influenced by extreme tails or skewed data. 
+The kurtosis values are around 2.04 for X1 and 2.13 for X2, suggesting slightly lighter tails, distributions are not heavily affected by outliers close to a normal-like shape. The means of the respective variables are relatively similar and lie near the centers of their distributions.
 
 
 Bivariate: 
-Points are dispersed across the plot, with some areas displaying higher density of points which indicate potential candidates for clustoring. 
+Points are dispersed across the plot, with some areas displaying higher density of points which indicate potential candidates for clustors. Furthermore, observations are not confined to specific quadrants, which suggests potential for multiple clusters
+
+(d)
+```{r}
+scaled_data <- scale(data)
+dist_matrix <- dist(scaled_data, method = "euclidean")
+
+# Convert to vector for plotting
+dist_vector <- as.vector(dist_matrix)
+
+ggplot(data.frame(Distance = dist_vector), aes(x = Distance)) +
+  geom_histogram(binwidth = 0.1, fill = "lightblue", color = "darkblue") +
+  labs(title = "Distribution of Pairwise Distances",
+       x = "Euclidean Distance",
+       y = "Count") +
+  theme_minimal()
 
 
 
+```
+The histogram of pairwise Euclidean distances peaks at small values, indicating many observations are close together, which suggests tight clusters. The long tail of larger distances shows separation between clusters or possible outliers far from the main groups.
+
+Regarding the shape of the distribution: The distribution is positively skewed (right-skewed), with a sharp peak near the lower distance values and a gradual decline toward higher distances. This skewness reflects a dense core of observations grouped closely, contrasted with fewer, more widely separated points. The shape highlights the presence of compact clusters alongside sparse regions
+
+(e) Outliers are observations that lie far from dense clusters, often increasing distances.
+
+```{r}
+library(dplyr)
+dist_matrix <- as.matrix(dist(scale(data),method = "euclidean"))
+
+# For each observation, compute average distance to all others
+avg_dist <- rowMeans(dist_matrix)
+
+# y top 10 observations with highest average distances
+outlier_indices <- order(avg_dist, decreasing = TRUE)[1:10]
+outliers <- data[outlier_indices, ]
+
+#threshold <- quantile(avg_dist, 0.95)
+#(potential_outliers <- which(avg_dist > threshold))
+
+```
+
+We identified potential outliers by calculating the average Euclidean distance of each observation to all others in the scaled dataset. The 10 observations with the highest average distances were selected as outliers, as these points are farthest from the dense clusters.
+
+(f) correlation matrix 
 
 
+```{r}
+cor(data)
 
+```
+The pair plots and Euclidean pairwise distance distribution indicate minimal overlap between variables. This is emphasise by a correlation of 0.0691 which indicates a very weak linear relationship between the two variables. Given that there is no strong correlation, no adjustment such as decorrelation or variable removal is necessary before clustering.
 
+(g)
 
+Yes, I will standardize the data.
 
+From the data summary, X1 ranges roughly from 90,000 to 933,000 and X2 from about 10,000 to 977,000, showing noticeable differences in scale and spread. Because clustering algorithms like k-means rely on Euclidean distance—which sums differences across variables—variables with larger ranges or variances have a greater impact on the total distance between points.
 
+Without standardization, the variable with the larger scale or spread would dominate the distance calculation, biasing the clustering results toward that variable's structure.
 
-
+##Hyper-parameter tuning 
 
 
