@@ -4,18 +4,90 @@ format: pdf
 editor: visual
 ---
 
-## Exploratory analysis 
+## Exploratory analysis
 
+```{r}
+
+library(tidyr)
+library(ggplot2)
+library(ggExtra)
+
+```
+
+Before conducting any analysis, it is important to consider common data cleaning steps such as handling missing values, removing duplicates, identifying outliers, and scaling variables.
 
 ```{r}
 # Load data
 data <- read.table("STA4026_Assignment_Clustering.txt", header = FALSE)
-head(data)
 colnames(data) <- c("X1", "X2")
-dim(data)
-str(data)
-sum(is.na(data))
+
+data|> as_tibble() |> summarise(n = n(),
+                     distinct    = n_distinct(pick(X1,X2)),
+                     distinct_V1 = n_distinct(X1), 
+                     distinct_V2 = n_distinct(X2),
+                     any_na      = anyNA(pick(X1,X2), recursive = T))
+                     
 summary(data)
+(outliers_X1 <- boxplot.stats(data$X1)$out)
+(outliers_X2 <- boxplot.stats(data$X2)$out)
+
+data_long <- data |> pivot_longer(cols = c(X1, X2), names_to = "Variable", values_to = "Value")
+
+ggplot(data_long, aes(x = Variable, y = Value)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Boxplots of X1 and X2")
+
+
 
 ```
+
+The dataset contains 5000 observations with two numeric variables, `X1` and `X2`. Upon examination: There are no missing values in either variable. Nearly all values are distinct, indicating the absence of duplicate observations.
+
+The variables exhibit wide ranges, with `X1` spanning approximately from 90,000 to 933,000 (median around 509,000) and `X2` from roughly 10,000 to 977,000 (median near 495,000). Boxplots reveal similar spreads in the data without any visible outliers. Based on this thorough assessment, no data cleaning was necessary. The dataset is complete, unique, and exhibits no extreme values that could bias clustering
+
+
+1b)
+
+```{r}
+cor(data$X1, data$X2)
+```
+
+The dataset contains two continuous numeric variables with similar scales and no missing data or significant outliers. The correlation between variables is weak (approximately 0.07), indicating they provide largely independent information. This justifies the use of Euclidean distance, which measures the straight-line distance between points in the two-dimensional space.
+
+1c)
+
+```{r}
+p1 <- ggplot(scale(data), aes(x = X1, y  =X2)) +
+  geom_point(size = 0.5, col = "blue", alpha=0.3) +
+  labs( x = "X1", y = "X2", title = "Scatter plot of X1 vs X2")
+
+ggMarginal(p1, type = "histogram",fill = "lightblue",bins = 30, color = "darkred")
+
+
+
+
+```
+We need to examine the univariate Distributions for skewness, spread, outliers, and modality since these :
+Continuous variables allow for nuanced grouping
+Multiple peaks in a distribution can indicate subgroups or clusters along that variable
+Wide spread means points are more dispersed, which might lead to well-separated clusters.
+
+
+
+Bivariate: 
+Points are dispersed across the plot, with some areas displaying higher density of points which indicate potential candidates for clustoring. 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
