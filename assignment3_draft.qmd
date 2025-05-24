@@ -15,7 +15,7 @@ library(moments) #skewness fns
 library(knitr)
 library(dplyr)
 library(corrplot)
-
+library(cluster)
 ```
 
 Before conducting any analysis, it is important to consider common data cleaning steps such as handling missing values, removing duplicates, identifying outliers, and scaling variables.
@@ -50,8 +50,7 @@ The dataset contains 5000 observations with two numeric variables, `X1` and `X2`
 
 The variables exhibit wide ranges, with `X1` spanning approximately from 90,000 to 933,000 (median around 509,000) and `X2` from roughly 10,000 to 977,000 (median near 495,000). Boxplots reveal similar spreads in the data without any visible outliers. Based on this thorough assessment, no data cleaning was necessary. The dataset is complete, unique, and exhibits no extreme values that could bias clustering
 
-
-1b)[remove this numbering]
+1b)\[remove this numbering\]
 
 ```{r}
 scaled_data <- as.data.frame(scale(data))
@@ -85,19 +84,17 @@ stats_table <- data.frame(
 kable(stats_table, digits = 3, caption = "Skewness and Kurtosis of Scaled Variables")
 
 ```
-We need to examine the univariate Distributions for skewness, spread, outliers, and modality since these effect...
-Both variables are continuous variables allow for nuanced grouping
+
+We need to examine the univariate Distributions for skewness, spread, outliers, and modality since these effect... Both variables are continuous variables allow for nuanced grouping
 
 Evident from the histograms we can see multiple peaks in a distribution which indicates subgroups or clusters along that variable. We also notice that both variables have relatively wide spread means points that are more dispersed, which might lead to well-separated clusters.
 
-The skewness values for X1 and X2 are approximately -0.03 and 0.04, respectively. These values are very close to zero, indicating that both variables have nearly symmetric distributions without significant skewness.This is advantageous for centroid-based methods like k-means since cluster centers (means) will not be unduly influenced by extreme tails or skewed data. 
-The kurtosis values are around 2.04 for X1 and 2.13 for X2, suggesting slightly lighter tails, distributions are not heavily affected by outliers close to a normal-like shape. The means of the respective variables are relatively similar and lie near the centers of their distributions.
+The skewness values for X1 and X2 are approximately -0.03 and 0.04, respectively. These values are very close to zero, indicating that both variables have nearly symmetric distributions without significant skewness.This is advantageous for centroid-based methods like k-means since cluster centers (means) will not be unduly influenced by extreme tails or skewed data. The kurtosis values are around 2.04 for X1 and 2.13 for X2, suggesting slightly lighter tails, distributions are not heavily affected by outliers close to a normal-like shape. The means of the respective variables are relatively similar and lie near the centers of their distributions.
 
+Bivariate: Points are dispersed across the plot, with some areas displaying higher density of points which indicate potential candidates for clustors. Furthermore, observations are not confined to specific quadrants, which suggests potential for multiple clusters
 
-Bivariate: 
-Points are dispersed across the plot, with some areas displaying higher density of points which indicate potential candidates for clustors. Furthermore, observations are not confined to specific quadrants, which suggests potential for multiple clusters
+(d) 
 
-(d)
 ```{r}
 scaled_data <- scale(data)
 dist_matrix <- dist(scaled_data, method = "euclidean")
@@ -115,6 +112,7 @@ ggplot(data.frame(Distance = dist_vector), aes(x = Distance)) +
 
 
 ```
+
 The histogram of pairwise Euclidean distances peaks at small values, indicating many observations are close together, which suggests tight clusters. The long tail of larger distances shows separation between clusters or possible outliers far from the main groups.
 
 Regarding the shape of the distribution: The distribution is positively skewed (right-skewed), with a sharp peak near the lower distance values and a gradual decline toward higher distances. This skewness reflects a dense core of observations grouped closely, contrasted with fewer, more widely separated points. The shape highlights the presence of compact clusters alongside sparse regions
@@ -139,16 +137,16 @@ outliers <- data[outlier_indices, ]
 
 We identified potential outliers by calculating the average Euclidean distance of each observation to all others in the scaled dataset. The 10 observations with the highest average distances were selected as outliers, as these points are farthest from the dense clusters.
 
-(f) correlation matrix 
-
+(f) correlation matrix
 
 ```{r}
 cor(data)
 
 ```
+
 The pair plots and Euclidean pairwise distance distribution indicate minimal overlap between variables. This is emphasise by a correlation of 0.0691 which indicates a very weak linear relationship between the two variables. Given that there is no strong correlation, no adjustment such as decorrelation or variable removal is necessary before clustering.
 
-(g)
+(g) 
 
 Yes, I will standardize the data.
 
@@ -156,6 +154,67 @@ From the data summary, X1 ranges roughly from 90,000 to 933,000 and X2 from abou
 
 Without standardization, the variable with the larger scale or spread would dominate the distance calculation, biasing the clustering results toward that variable's structure.
 
-##Hyper-parameter tuning 
+##Hyper-parameter tuning
+
+a\) Selecting K :\
+
+Silhouette scores for K-means
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# silhouette scores for k-means (K=2 to K=20)
+silhouette_kmeans <- function(data, max_k = 20) {
+  sil_scores <- numeric(max_k - 1)  # Store silhouette scores
+  
+  for (k in 2:max_k) {
+    # k-means clustering
+    km_res <- kmeans(data, centers = k, nstart = 25)
+    
+    # Calculate silhouette score
+    sil <- silhouette(km_res$cluster, dist(data))
+    sil_scores[k - 1] <- mean(sil[, 3])  # Average silhouette score
+  }
+  
+  return(sil_scores)
+}
+
+# Apply the function to the scaled data
+sil_scores_kmeans <- silhouette_kmeans(scaled_data, max_k = 20)
+
+# Plot silhouette scores for k-means
+plot(2:20, sil_scores_kmeans, type = "b", pch = 19, col = "blue", 
+     xlab = "Number of Clusters (K)", ylab = "Average Silhouette Score", 
+     main = "Silhouette Plot for K-means")
+
+```
+
+Silhouette Scores for K-medoids (PAM)
+
+```{r}
+library(cluster)
+# Function to calculate silhouette scores for k-medoids (PAM) (K=2 to K=20)
+pam_fn <- function(data, max_k = 20) {
+  sil_scores <- numeric(max_k - 1)
+  
+  for (k in 2:max_k) {
+    # k-medoids clustering (PAM)
+    pam_res <- pam(data, k = k)
+    
+    # Calculate silhouette score
+    sil <- silhouette(pam_res$clustering, dist(data))
+    sil_scores[k - 1] <- mean(sil[, 3])  # Average silhouette score
+  }
+  
+  return(sil_scores)
+}
+
+sil_scores_pam <- pam_fn(scaled_data, max_k = 20)
 
 
+plot(2:20, sil_scores_pam, type = "b", pch = 19, col = "red", 
+     xlab = "Number of Clusters (K)", ylab = "Average Silhouette Score", 
+     main = "Silhouette Plot for K-medoids")
+
+```
