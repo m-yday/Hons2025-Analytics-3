@@ -161,60 +161,77 @@ a\) Selecting K :\
 Silhouette scores for K-means
 
 ```{r}
-# Set seed for reproducibility
-set.seed(123)
 
-# silhouette scores for k-means (K=2 to K=20)
-silhouette_kmeans <- function(data, max_k = 20) {
-  sil_scores <- numeric(max_k - 1)  # Store silhouette scores
-  
-  for (k in 2:max_k) {
-    # k-means clustering
-    km_res <- kmeans(data, centers = k, nstart = 25)
-    
-    # Calculate silhouette score
-    sil <- silhouette(km_res$cluster, dist(data))
-    sil_scores[k - 1] <- mean(sil[, 3])  # Average silhouette score
-  }
-  
-  return(sil_scores)
+library(cluster)  # for silhouette and pam
+library(factoextra)  # For nice visualization (install if needed)
+
+# Function to compute average silhouette width for k-means clustering
+avg_silhouette <- function(k, data) {
+  km.res <- kmeans(data, centers = k, nstart = 10)
+  sil <- silhouette(km.res$cluster, dist(data))
+  mean(sil[, 3])  # Average silhouette width
 }
+k_values <- 2:20
+sil_scores <- sapply(k_values, avg_silhouette, data = scaled_data)
 
-# Apply the function to the scaled data
-sil_scores_kmeans <- silhouette_kmeans(scaled_data, max_k = 20)
-
-# Plot silhouette scores for k-means
-plot(2:20, sil_scores_kmeans, type = "b", pch = 19, col = "blue", 
-     xlab = "Number of Clusters (K)", ylab = "Average Silhouette Score", 
-     main = "Silhouette Plot for K-means")
-
+plot(k_values, sil_scores, type = "b", pch = 19, col = "blue",
+     xlab = "Number of Clusters K",
+     ylab = "Average Silhouette Width",
+     main = "Silhouette Analysis for K-means")
 ```
 
 Silhouette Scores for K-medoids (PAM)
 
 ```{r}
-library(cluster)
-# Function to calculate silhouette scores for k-medoids (PAM) (K=2 to K=20)
-pam_fn <- function(data, max_k = 20) {
-  sil_scores <- numeric(max_k - 1)
-  
-  for (k in 2:max_k) {
-    # k-medoids clustering (PAM)
-    pam_res <- pam(data, k = k)
-    
-    # Calculate silhouette score
-    sil <- silhouette(pam_res$clustering, dist(data))
-    sil_scores[k - 1] <- mean(sil[, 3])  # Average silhouette score
-  }
-  
-  return(sil_scores)
+library(parallel)
+num_cores <- detectCores() - 1
+avg_sil_pam <- function(k, data) {
+  pam.res <- pam(data, k = k)
+  mean(pam.res$silinfo$avg.width)
 }
 
-sil_scores_pam <- pam_fn(scaled_data, max_k = 20)
+# Function to compute average silhouette width for k-means
+avg_silhouette_kmeans <- function(k, data) {
+  km <- kmeans(data, centers = k, nstart = 10)
+  sil <- silhouette(km$cluster, dist(data))
+  mean(sil[, 3])
+}
 
+# Function to compute average silhouette width for k-medoids (PAM)
+avg_silhouette_pam <- function(k, data) {
+  pam_res <- pam(data, k = k)
+  pam_res$silinfo$avg.width
+}
 
-plot(2:20, sil_scores_pam, type = "b", pch = 19, col = "red", 
-     xlab = "Number of Clusters (K)", ylab = "Average Silhouette Score", 
-     main = "Silhouette Plot for K-medoids")
+k_values <- 2:20
+sil_kmeans <- sapply(k_values, avg_silhouette_kmeans, data = scaled_data)
+sil_pam <- sapply(k_values, avg_silhouette_pam, data = scaled_data)
+
+# Prepare dataframe for ggplot
+sil_df <- data.frame(
+  K = rep(k_values, 2),
+  AvgSilhouette = c(sil_kmeans, sil_pam),
+  Method = rep(c("K-means", "K-medoids"), each = length(k_values))
+)
+
+# Plot using ggplot2
+ggplot(sil_df, aes(x = K, y = AvgSilhouette, color = Method)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Average Silhouette Width for K-means and K-medoids",
+       x = "Number of clusters K",
+       y = "Average silhouette width") +
+  theme_minimal()
+
+```
+
+This plot shows the average silhouette width for cluster numbers k=2 to 20 for both k-means and k-medoids clustering methods.
+
+Both methods follow a similar pattern with average silhouette width generally increasing as KK increases from 2 up to around 14-15.
+
+The silhouette width peaks at K=15K=15 for both methods
+
+```{r}
+
 
 ```
