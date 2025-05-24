@@ -227,11 +227,15 @@ ggplot(sil_df, aes(x = K, y = AvgSilhouette, color = Method)) +
 
 This plot shows the average silhouette width for cluster numbers k=2 to 20 for both k-means and k-medoids clustering methods.
 
-Both methods follow a similar pattern with average silhouette width generally increasing as KK increases from 2 up to around 14-15.
+Both methods show a similar trend where the average silhouette width generally increases as k increases, peaking at K=15. This indicates that 15 clusters provide the best balance between cluster cohesion (how close points are within clusters) and separation (how distinct clusters are from each other).
 
-The silhouette width peaks at K=15K=15 for both methods
+Before reaching 15 clusters, there is a noticeable local peak at K=12 suggesting this is also a meaningful clustering choice. K=15, the silhouette width declines slightly, implying that further increasing the number of clusters reduces cluster quality.
+
+a\) Initialisation Sensitivty Analysis we want to check how stable our clustering results are when running the algorithm multiple times with different random initialization.
 
 ```{r}
+
+
 
 
 ```
